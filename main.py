@@ -190,11 +190,11 @@ def run_config_portal():
 
 <div class="config-card">
     <div class="header-preview">
-        <h1>KONFIGURACJA2 <span>Urządzenia</span></h1>
+        <h1>KONFIGURACJA3 <span>Urządzenia</span></h1>
     </div>
 
     <div class="settings-body">
-        <label for="displayMode" style="text-align: center;">TRYB DZIAŁANIA2</label>
+        <label for="displayMode" style="text-align: center;">TRYB DZIAŁANIA3</label>
         <select id="displayMode" onchange="toggleMode()">
             <option value="calendar">📅 Kalendarz</option>
             <option value="photo">🖼️ Ramka na zdjęcia</option>
