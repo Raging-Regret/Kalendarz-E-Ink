@@ -1,6 +1,7 @@
 import time
 import os
 import gc
+import machine
 import network
 import socket
 import ssl
@@ -549,6 +550,99 @@ def connect_wifi(ssid, password):
         time.sleep(1)
     return False
 
+# --- OTA UPDATE ---
+def check_for_update():
+    log("Checking for updates...")
+
+    local_hash = ""
+    try:
+        with open("/sd/version.txt", "r") as f:
+            local_hash = f.read().strip()
+    except:
+        pass
+
+    log(f"Local: {local_hash[:8] if local_hash else 'none'}")
+
+    try:
+        addr = socket.getaddrinfo("api.github.com", 443)[0][-1]
+        s = socket.socket()
+        s.settimeout(10.0)
+        s.connect(addr)
+        ss = ssl.wrap_socket(s)
+
+        ss.write((f"GET /repos/Raging-Regret/Kalendarz-E-Ink/commits/main HTTP/1.1\r\n"
+                   f"Host: api.github.com\r\n"
+                   f"Accept: application/vnd.github.sha\r\n"
+                   f"User-Agent: ESP32\r\n"
+                   f"Connection: close\r\n\r\n").encode())
+
+        status_line = ss.readline()
+        if b"200" not in status_line:
+            ss.close(); s.close()
+            log("Update check: bad response")
+            return
+
+        while True:
+            line = ss.readline()
+            if line == b"\r\n" or line == b"": break
+
+        remote_hash = ss.read().decode().strip()
+        ss.close(); s.close()
+        log(f"Remote: {remote_hash[:8]}")
+
+        if remote_hash == local_hash:
+            log("Up to date.")
+            return
+
+        log("Downloading new main.py...")
+        led.orange()
+        gc.collect()
+
+        addr = socket.getaddrinfo("raw.githubusercontent.com", 443)[0][-1]
+        s = socket.socket()
+        s.settimeout(15.0)
+        s.connect(addr)
+        ss = ssl.wrap_socket(s)
+
+        ss.write((f"GET /Raging-Regret/Kalendarz-E-Ink/main/main.py HTTP/1.1\r\n"
+                   f"Host: raw.githubusercontent.com\r\n"
+                   f"User-Agent: ESP32\r\n"
+                   f"Connection: close\r\n\r\n").encode())
+
+        while True:
+            line = ss.readline()
+            if line == b"\r\n" or line == b"": break
+
+        with open("main_new.py", "wb") as f:
+            while True:
+                chunk = ss.read(1024)
+                if not chunk: break
+                f.write(chunk)
+
+        ss.close(); s.close()
+
+        if os.stat("main_new.py")[6] < 100:
+            os.remove("main_new.py")
+            log("Update file too small, skipping")
+            return
+
+        try: os.remove("main.py")
+        except: pass
+        os.rename("main_new.py", "main.py")
+
+        with open("/sd/version.txt", "w") as f:
+            f.write(remote_hash)
+
+        log("Updated! Restarting...")
+        led.green()
+        time.sleep(1)
+        machine.reset()
+
+    except Exception as e:
+        log(f"OTA Error: {e}")
+        try: os.remove("main_new.py")
+        except: pass
+
 # --- DOWNLOADER ---
 def download_to_sd(filename, save_path):
     led.cyan()
@@ -784,6 +878,7 @@ if __name__ == '__main__':
             filename = f"{next_idx}.bin"
             
             if connect_wifi(ssid, password):
+                check_for_update()
                 if download_to_sd(filename, local_path):
                     with open("/sd/idx.txt", "w") as f: f.write(str(next_idx))
                     try:
