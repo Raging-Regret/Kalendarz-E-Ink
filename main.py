@@ -63,11 +63,28 @@ def run_config_portal():
     led.blue()
     log("Starting Hotspot...")
     
+    # Scan WiFi networks before starting AP
+    sta = network.WLAN(network.STA_IF)
+    sta.active(True)
+    time.sleep(1)
+    try:
+        nets = sta.scan()
+        seen = set()
+        wifi_options = ""
+        for net in sorted(nets, key=lambda x: x[3], reverse=True):
+            ssid_name = net[0].decode("utf-8", "ignore").strip()
+            if ssid_name and ssid_name not in seen:
+                seen.add(ssid_name)
+                wifi_options += f'<option value="{ssid_name}">{ssid_name}</option>'
+    except:
+        wifi_options = ""
+    sta.active(False)
+
     ap = network.WLAN(network.AP_IF)
-   
+
     ap.config(essid='Calendar_Setup', authmode=0)
     ap.active(True)
-    
+
     while not ap.active(): time.sleep(0.1)
     my_ip = ap.ifconfig()[0]
     log(f"IP: {my_ip}")
@@ -233,7 +250,7 @@ def run_config_portal():
             
             <div class="wifi-box">
                 <span class="section-title" style="text-align: center;">Połączenie Wi-Fi</span>
-                <input type="text" id="wifi_ssid" placeholder="Nazwa sieci (SSID)" tabIndex="-1">
+                <select id="wifi_ssid" tabIndex="-1"><option value="" disabled selected>Wybierz sieć...</option>""" + wifi_options + """</select>
                 <input type="password" id="wifi_pass" placeholder="Hasło" tabIndex="-1">
                 <div class="btn-group">
                     <button class="btn-check">Sprawdź Połączenie</button>
