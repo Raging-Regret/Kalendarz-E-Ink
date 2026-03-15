@@ -208,7 +208,7 @@ def run_config_portal():
     </div>
 
     <div class="settings-body">
-        <label for="displayMode" style="text-align: center;">TRYB DZIAŁANIA 2</label>
+        <label for="displayMode" style="text-align: center;">TRYB DZIAŁANIA</label>
         <select id="displayMode" onchange="toggleMode()">
             <option value="calendar">📅 Kalendarz</option>
             <option value="photo">🖼️ Ramka na zdjęcia</option>
@@ -544,7 +544,11 @@ def run_config_portal():
                         return True # Trigger Display
 
                     else:
-                        conn.send("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html_part1)
+                        path = req_str.split(' ')[1].split('?')[0] if ' ' in req_str else '/'
+                        if path == '/':
+                            conn.send("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n" + html_part1)
+                        else:
+                            conn.send(f"HTTP/1.1 302 Found\r\nLocation: http://{my_ip}/\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n")
                     conn.close()
                 except: pass
 
@@ -932,4 +936,3 @@ if __name__ == '__main__':
         try: os.umount("/sd")
         except: pass
         tpl5110_done()
-
